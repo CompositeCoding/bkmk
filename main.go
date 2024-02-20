@@ -4,66 +4,164 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strings"
+	"os/exec"
+	"regexp"
+	"runtime"
 
-	"github.com/blevesearch/bleve/v2"
-	"github.com/google/uuid"
+	"github.com/AlecAivazis/survey/v2"
 	"github.com/spf13/cobra"
 )
 
-var index, _ = bleve.Open("index.bleve")
-
-type Domain struct {
-	ID    string
-	Value string
+func isValidURL(url string) bool {
+	regex := regexp.MustCompile(`^(http|https):\/\/[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,5}(:[0-9]{1,5})?(\/.*)?$`)
+	return regex.MatchString(url)
 }
 
-func queryDomains(query string) ([]string, error) {
+func openBrowser(url string) error {
+	var cmd string
+	var args []string
 
-	toQuery := bleve.NewWildcardQuery("*" + query + "*")
-	searchRequest := bleve.NewSearchRequest(toQuery)
-	searchRequest.Fields = []string{"Value"}
+	switch runtime.GOOS {
+	case "windows":
+		cmd = "cmd"
+		args = []string{"/c", "start"}
+	case "darwin":
+		cmd = "open"
+	default: // "linux", "freebsd", "openbsd", "netbsd"
+		cmd = "xdg-open"
+	}
+	args = append(args, url)
+	return exec.Command(cmd, args...).Start()
+}
 
-	var returnArray []string
-	result, err := index.Search(searchRequest)
+func handleOpen(cmd *cobra.Command, args []string) {
 
+	var domains []Domain
+	var err error
+
+	if len(args) == 0 {
+		domains, err = queryDomains("")
+	} else {
+		domains, err = queryDomains(args[0])
+	}
 	if err != nil {
-		return nil, err
+		log.Fatal("Fatal query error")
 	}
 
-	for _, hit := range result.Hits {
-		if val, ok := hit.Fields["Value"].(string); ok {
-			returnArray = append(returnArray, val)
+	var suggestions []string
+
+	// Loop through the domains and append the Value of each to the values slice
+	for _, domain := range domains {
+		suggestions = append(suggestions, domain.Value)
+	}
+
+	if len(suggestions) == 0 {
+		fmt.Println("Cannot open an empty index, call `add` first!")
+		return
+	}
+
+	// The question to ask
+	var qs = []*survey.Question{
+		{
+			Name: "item",
+			Prompt: &survey.Select{
+				Message: "Choose a bookmark to delete:",
+				Options: suggestions,
+			},
+		},
+	}
+
+	// The answer will be stored in this struct
+	answer := struct {
+		Item string `survey:"item"` // matches the question name
+	}{}
+
+	// Perform the survey
+	err = survey.Ask(qs, &answer)
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+
+	openBrowser(answer.Item)
+
+}
+
+func handleAdd(cmd *cobra.Command, args []string) {
+	if !isValidURL(args[0]) {
+		fmt.Printf("Error! Unable to add %v, bkmk only supports valid URLs", args[0])
+		return
+	}
+
+	err := addDomain(args[0])
+	if err != nil {
+		fmt.Printf("Error! Unable to add %v", args[0])
+	} else {
+		fmt.Printf("Successfully bookmarked %v!", args[0])
+	}
+}
+
+func handleDelete(cmd *cobra.Command, args []string) {
+
+	var domains []Domain
+	var err error
+
+	if len(args) == 0 {
+		domains, err = queryDomains("")
+	} else {
+		domains, err = queryDomains(args[0])
+	}
+	if err != nil {
+		log.Fatal("Fatal query error")
+	}
+
+	var suggestions []string
+
+	// Loop through the domains and append the Value of each to the values slice
+	for _, domain := range domains {
+		suggestions = append(suggestions, domain.Value)
+	}
+
+	if len(suggestions) == 0 {
+		fmt.Println("Cannot delete in an empty index")
+		return
+	}
+
+	// The question to ask
+	var qs = []*survey.Question{
+		{
+			Name: "item",
+			Prompt: &survey.Select{
+				Message: "Choose a bookmark to open:",
+				Options: suggestions,
+			},
+		},
+	}
+
+	// The answer will be stored in this struct
+	answer := struct {
+		Item string `survey:"item"` // matches the question name
+	}{}
+
+	// Perform the survey
+	err = survey.Ask(qs, &answer)
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+
+	// resolve delete
+	var id string
+	for _, domain := range domains {
+		if domain.Value == answer.Item {
+			id = domain.ID
 		}
 	}
-	return returnArray, nil
-}
-
-func addDomain(domain string) error {
-
-	tempDomain := Domain{ID: uuid.New().String(), Value: domain}
-
-	err := index.Index(tempDomain.ID, tempDomain)
+	err = deleteDomain(id)
 	if err != nil {
-		log.Panic(err)
-	}
-
-	return nil
-}
-
-func init() {
-
-	index, err := bleve.New("index.bleve", bleve.NewIndexMapping())
-
-	if err == nil {
-		log.Print("Creating index")
-
-		index.Close()
-	} else if strings.Contains(err.Error(), "cannot create new index, path already exists") {
-		log.Print("index exists")
-		return
-	} else {
 		log.Print(err)
+	} else {
+		log.Printf("Successfully deleted %v", answer.Item)
 	}
 }
 
@@ -75,24 +173,26 @@ func main() {
 		Use:   "add [string to add]",
 		Short: "Add a new url to your bookmarks",
 		Args:  cobra.MinimumNArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			log.Print("Added item:", args[0])
-		},
+		Run:   handleAdd,
 	}
 
 	var cmdOpen = &cobra.Command{
 		Use:   "open [path]",
 		Short: "Open a bookmark",
-		Args:  cobra.MinimumNArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			log.Print("Opening item at path:", args[0])
-		},
+		Args:  cobra.MinimumNArgs(0),
+		Run:   handleOpen,
 	}
 
-	rootCmd.AddCommand(cmdAdd, cmdOpen)
+	var cmdDelete = &cobra.Command{
+		Use:   "delete [path]",
+		Short: "Delete a bookmark",
+		Args:  cobra.MinimumNArgs(0),
+		Run:   handleDelete,
+	}
+	rootCmd.AddCommand(cmdAdd, cmdOpen, cmdDelete)
 
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
+		log.Fatal(err)
 		os.Exit(1)
 	}
 }
