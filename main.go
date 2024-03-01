@@ -65,7 +65,7 @@ func handleOpen(cmd *cobra.Command, args []string) {
 		{
 			Name: "item",
 			Prompt: &survey.Select{
-				Message: "Choose a bookmark to delete:",
+				Message: "Choose a bookmark to Open:",
 				Options: suggestions,
 			},
 		},
@@ -165,6 +165,10 @@ func handleDelete(cmd *cobra.Command, args []string) {
 	}
 }
 
+func handleImport(cmd *cobra.Command, args []string) {
+	importer(args[0])
+}
+
 func main() {
 
 	var rootCmd = &cobra.Command{Use: "bkmk"}
@@ -189,7 +193,14 @@ func main() {
 		Args:  cobra.MinimumNArgs(0),
 		Run:   handleDelete,
 	}
-	rootCmd.AddCommand(cmdAdd, cmdOpen, cmdDelete)
+
+	var cmdImport = &cobra.Command{
+		Use:   "import [path]",
+		Short: "Import your bookmarks for an exported HTML file",
+		Args:  cobra.MinimumNArgs(1),
+		Run:   handleImport,
+	}
+	rootCmd.AddCommand(cmdAdd, cmdOpen, cmdDelete, cmdImport)
 
 	if err := rootCmd.Execute(); err != nil {
 		log.Fatal(err)
