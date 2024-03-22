@@ -35,7 +35,7 @@ func importer(path string) {
 			for _, attribute := range node.Attr {
 				if attribute.Key == "href" {
 					split_on_query_param := strings.Split(attribute.Val, `?`)
-					addDomain(split_on_query_param[0])
+					addDomain(split_on_query_param[0], "")
 				}
 			}
 		}

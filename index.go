@@ -13,6 +13,7 @@ var err error
 type Domain struct {
 	ID    string
 	Value string
+	Alias string
 }
 
 func queryDomains(query string) ([]Domain, error) {
@@ -30,16 +31,17 @@ func queryDomains(query string) ([]Domain, error) {
 
 	for _, hit := range result.Hits {
 		val := hit.Fields["Value"].(string)
-		domainInstance := Domain{Value: val, ID: hit.ID}
+		alias := hit.Fields["Alias"].(string)
+		domainInstance := Domain{Value: val, ID: hit.ID, Alias: alias}
 		returnArray = append(returnArray, domainInstance)
 
 	}
 	return returnArray, nil
 }
 
-func addDomain(domain string) error {
+func addDomain(domain string, alias string) error {
 
-	tempDomain := Domain{ID: uuid.New().String(), Value: domain}
+	tempDomain := Domain{ID: uuid.New().String(), Value: domain, Alias: alias}
 
 	err := index.Index(tempDomain.ID, tempDomain)
 	if err != nil {

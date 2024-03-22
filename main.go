@@ -52,7 +52,8 @@ func handleOpen(cmd *cobra.Command, args []string) {
 
 	// Loop through the domains and append the Value of each to the values slice
 	for _, domain := range domains {
-		suggestions = append(suggestions, domain.Value)
+		log.Print(domain)
+		suggestions = append(suggestions, fmt.Sprintf("%v: %v", domain.Alias, domain.Value))
 	}
 
 	if len(suggestions) == 0 {
@@ -88,12 +89,15 @@ func handleOpen(cmd *cobra.Command, args []string) {
 }
 
 func handleAdd(cmd *cobra.Command, args []string) {
+
 	if !isValidURL(args[0]) {
 		fmt.Printf("Error! Unable to add %v, bkmk only supports valid URLs", args[0])
 		return
 	}
 
-	err := addDomain(args[0])
+	aliasFlag, _ := cmd.Flags().GetString("alias")
+
+	err := addDomain(args[0], aliasFlag)
 	if err != nil {
 		fmt.Printf("Error! Unable to add %v", args[0])
 	} else {
@@ -179,6 +183,8 @@ func main() {
 		Args:  cobra.MinimumNArgs(1),
 		Run:   handleAdd,
 	}
+
+	cmdAdd.Flags().StringP("alias", "a", "", "Set an Alias for the bookmark")
 
 	var cmdOpen = &cobra.Command{
 		Use:   "open [path]",
