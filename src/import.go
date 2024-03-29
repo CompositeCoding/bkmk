@@ -1,7 +1,8 @@
 package main
 
 import (
-	"log"
+	"errors"
+	"fmt"
 	"os"
 	"strings"
 
@@ -9,24 +10,26 @@ import (
 )
 
 // Function that takes a bookmark file path and imports into index
-func importer(path string) {
+func importer(path string) error {
 
 	file, err := os.Open(path)
 
 	if err != nil {
-		log.Print(err)
+		log_error(fmt.Errorf("Error: Could not open file - %d", err), 0)
+		return err
 	}
 
 	doc, err := html.Parse(file)
 
 	if err != nil {
-		log.Print(err)
+		log_error(fmt.Errorf("Error: Could not parse file - %d", err), 0)
+		return err
 	}
 
 	// All bookmark files have this string
 	if doc.FirstChild.Data != "netscape-bookmark-file-1" {
-		log.Println("Please provide a valid bookmark file")
-		return
+		log_error(errors.New("Please provide a valid bookmark file"), 0)
+		return err
 	}
 
 	// recursive function to traverse html tree
@@ -45,4 +48,6 @@ func importer(path string) {
 		}
 	}
 	f(doc)
+
+	return nil
 }

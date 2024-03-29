@@ -64,7 +64,7 @@ func init() {
 	if err != nil {
 		index, err = bleve.New("index.bleve", bleve.NewIndexMapping())
 		if err != nil {
-			log.Fatalf("Fatal memory error %v", err)
+			log_error(err, 2)
 		}
 	}
 }

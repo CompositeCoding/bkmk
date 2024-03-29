@@ -1,9 +1,9 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"log"
-	"os"
 	"os/exec"
 	"regexp"
 	"runtime"
@@ -45,19 +45,18 @@ func handleOpen(cmd *cobra.Command, args []string) {
 		domains, err = queryDomains(args[0])
 	}
 	if err != nil {
-		log.Fatal("Fatal query error")
+		log_error(err, 1)
 	}
 
 	var suggestions []string
 
 	// Loop through the domains and append the Value of each to the values slice
 	for _, domain := range domains {
-		log.Print(domain)
 		suggestions = append(suggestions, fmt.Sprintf("%v: %v", domain.Alias, domain.Value))
 	}
 
 	if len(suggestions) == 0 {
-		fmt.Println("Cannot open an empty index, call `add` first!")
+		log_error(errors.New("Cannot open an empty index, call `add` first!"), 0)
 		return
 	}
 
@@ -80,7 +79,7 @@ func handleOpen(cmd *cobra.Command, args []string) {
 	// Perform the survey
 	err = survey.Ask(qs, &answer)
 	if err != nil {
-		fmt.Println(err.Error())
+		log_error(err, 1)
 		return
 	}
 
@@ -99,7 +98,7 @@ func handleAdd(cmd *cobra.Command, args []string) {
 
 	err := addDomain(args[0], aliasFlag)
 	if err != nil {
-		fmt.Printf("Error! Unable to add %v", args[0])
+		log_error(err, 1)
 	} else {
 		fmt.Printf("Successfully bookmarked %v!", args[0])
 	}
@@ -116,7 +115,7 @@ func handleDelete(cmd *cobra.Command, args []string) {
 		domains, err = queryDomains(args[0])
 	}
 	if err != nil {
-		log.Fatal("Fatal query error")
+		log_error(err, 1)
 	}
 
 	var suggestions []string
@@ -150,7 +149,7 @@ func handleDelete(cmd *cobra.Command, args []string) {
 	// Perform the survey
 	err = survey.Ask(qs, &answer)
 	if err != nil {
-		fmt.Println(err.Error())
+		log_error(err, 1)
 		return
 	}
 
@@ -163,7 +162,7 @@ func handleDelete(cmd *cobra.Command, args []string) {
 	}
 	err = deleteDomain(id)
 	if err != nil {
-		log.Print(err)
+		log_error(err, 1)
 	} else {
 		log.Printf("Successfully deleted %v", answer.Item)
 
@@ -171,7 +170,10 @@ func handleDelete(cmd *cobra.Command, args []string) {
 }
 
 func handleImport(cmd *cobra.Command, args []string) {
-	importer(args[0])
+	err := importer(args[0])
+	if err != nil {
+		return
+	}
 }
 
 func main() {
@@ -210,7 +212,6 @@ func main() {
 	rootCmd.AddCommand(cmdAdd, cmdOpen, cmdDelete, cmdImport)
 
 	if err := rootCmd.Execute(); err != nil {
-		log.Fatal(err)
-		os.Exit(1)
+		log_error(err, 2)
 	}
 }

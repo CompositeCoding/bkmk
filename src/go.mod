@@ -1,6 +1,6 @@
 module bkmk
 
-go 1.21.3
+go 1.22.1
 
 require (
 	github.com/blevesearch/bleve/v2 v2.3.10
