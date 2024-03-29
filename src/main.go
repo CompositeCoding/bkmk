@@ -13,25 +13,27 @@ import (
 )
 
 func isValidURL(url string) bool {
-	regex := regexp.MustCompile(`^(http|https):\/\/[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,5}(:[0-9]{1,5})?(\/.*)?$`)
+	regex := regexp.MustCompile(`^((http|https|ftp|file):\/\/)?[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,5}(:[0-9]{1,5})?(\/.*)?$`)
 	return regex.MatchString(url)
 }
 
-func openBrowser(url string) error {
-	var cmd string
-	var args []string
+func openBrowser(url string) {
+	var cmd *exec.Cmd
 
 	switch runtime.GOOS {
 	case "windows":
-		cmd = "cmd"
-		args = []string{"/c", "start"}
+		cmd = exec.Command("rundll32", "url.dll", "FileProtocolHandler", url)
 	case "darwin":
-		cmd = "open"
+		cmd = exec.Command("open", url) // "open"
 	default: // "linux", "freebsd", "openbsd", "netbsd"
-		cmd = "xdg-open"
+		cmd = exec.Command("xdg-open", url) //  "xdg-open"
 	}
-	args = append(args, url)
-	return exec.Command(cmd, args...).Start()
+
+	err := cmd.Run()
+
+	if err != nil {
+		log_error(err, 1)
+	}
 }
 
 func handleOpen(cmd *cobra.Command, args []string) {
@@ -52,11 +54,11 @@ func handleOpen(cmd *cobra.Command, args []string) {
 
 	// Loop through the domains and append the Value of each to the values slice
 	for _, domain := range domains {
-		suggestions = append(suggestions, fmt.Sprintf("%v: %v", domain.Alias, domain.Value))
+		suggestions = append(suggestions, fmt.Sprintf("%v", domain.Value))
 	}
 
 	if len(suggestions) == 0 {
-		log_error(errors.New("Cannot open an empty index, call `add` first!"), 0)
+		log_error(errors.New("cannot open an empty index, call `add` first"), 0)
 		return
 	}
 

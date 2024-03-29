@@ -1,7 +1,7 @@
 package main
 
 import (
-	"log"
+	"fmt"
 
 	"github.com/blevesearch/bleve/v2"
 	"github.com/google/uuid"
@@ -30,10 +30,17 @@ func queryDomains(query string) ([]Domain, error) {
 	}
 
 	for _, hit := range result.Hits {
+
+		var domain Domain
+
 		val := hit.Fields["Value"].(string)
-		alias := hit.Fields["Alias"].(string)
-		domainInstance := Domain{Value: val, ID: hit.ID, Alias: alias}
-		returnArray = append(returnArray, domainInstance)
+		if hit.Fields["Alias"] != nil {
+			domain = Domain{Value: val, ID: hit.ID, Alias: hit.Fields["Alias"].(string)}
+		} else {
+			domain = Domain{Value: val, ID: hit.ID}
+		}
+
+		returnArray = append(returnArray, domain)
 
 	}
 	return returnArray, nil
@@ -41,11 +48,19 @@ func queryDomains(query string) ([]Domain, error) {
 
 func addDomain(domain string, alias string) error {
 
-	tempDomain := Domain{ID: uuid.New().String(), Value: domain, Alias: alias}
+	var tempDomain Domain
+
+	if alias != "" {
+		tempDomain = Domain{ID: uuid.New().String(), Value: domain, Alias: alias}
+	} else {
+		tempDomain = Domain{ID: uuid.New().String(), Value: domain}
+	}
+
+	fmt.Println(tempDomain)
 
 	err := index.Index(tempDomain.ID, tempDomain)
 	if err != nil {
-		log.Panic(err)
+		return err
 	}
 
 	return nil
