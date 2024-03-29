@@ -136,7 +136,7 @@ func handleDelete(cmd *cobra.Command, args []string) {
 		{
 			Name: "item",
 			Prompt: &survey.Select{
-				Message: "Choose a bookmark to open:",
+				Message: "Choose a bookmark to delete:",
 				Options: suggestions,
 			},
 		},
@@ -166,6 +166,7 @@ func handleDelete(cmd *cobra.Command, args []string) {
 		log.Print(err)
 	} else {
 		log.Printf("Successfully deleted %v", answer.Item)
+
 	}
 }
 

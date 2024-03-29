@@ -8,6 +8,7 @@ import (
 	"golang.org/x/net/html"
 )
 
+// Function that takes a bookmark file path and imports into index
 func importer(path string) {
 
 	file, err := os.Open(path)
@@ -22,15 +23,15 @@ func importer(path string) {
 		log.Print(err)
 	}
 
+	// All bookmark files have this string
 	if doc.FirstChild.Data != "netscape-bookmark-file-1" {
 		log.Println("Please provide a valid bookmark file")
 		return
 	}
 
+	// recursive function to traverse html tree
 	var f func(*html.Node)
-
 	f = func(node *html.Node) {
-
 		if node.Type == html.ElementNode && node.Data == "a" {
 			for _, attribute := range node.Attr {
 				if attribute.Key == "href" {
@@ -42,8 +43,6 @@ func importer(path string) {
 		for c := node.FirstChild; c != nil; c = c.NextSibling {
 			f(c)
 		}
-
 	}
-
 	f(doc)
 }
