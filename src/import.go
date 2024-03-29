@@ -15,20 +15,20 @@ func importer(path string) error {
 	file, err := os.Open(path)
 
 	if err != nil {
-		log_error(fmt.Errorf("Error: Could not open file - %d", err), 0)
+		log_error(fmt.Errorf("error: could not open file - %d", err), 0)
 		return err
 	}
 
 	doc, err := html.Parse(file)
 
 	if err != nil {
-		log_error(fmt.Errorf("Error: Could not parse file - %d", err), 0)
+		log_error(fmt.Errorf("error: could not parse file - %d", err), 0)
 		return err
 	}
 
 	// All bookmark files have this string
 	if doc.FirstChild.Data != "netscape-bookmark-file-1" {
-		log_error(errors.New("Please provide a valid bookmark file"), 0)
+		log_error(errors.New("please provide a valid bookmark file"), 0)
 		return err
 	}
 
