@@ -178,6 +178,10 @@ func handleImport(cmd *cobra.Command, args []string) {
 	}
 }
 
+func handleProfile(cmd *cobra.Command, args []string) {
+
+}
+
 func main() {
 
 	var rootCmd = &cobra.Command{Use: "bkmk"}
@@ -192,14 +196,14 @@ func main() {
 	cmdAdd.Flags().StringP("alias", "a", "", "Set an Alias for the bookmark")
 
 	var cmdOpen = &cobra.Command{
-		Use:   "open [path]",
+		Use:   "open [url]",
 		Short: "Open a bookmark",
 		Args:  cobra.MinimumNArgs(0),
 		Run:   handleOpen,
 	}
 
 	var cmdDelete = &cobra.Command{
-		Use:   "delete [path]",
+		Use:   "delete [url]",
 		Short: "Delete a bookmark",
 		Args:  cobra.MinimumNArgs(0),
 		Run:   handleDelete,
@@ -207,11 +211,22 @@ func main() {
 
 	var cmdImport = &cobra.Command{
 		Use:   "import [path]",
-		Short: "Import your bookmarks for an exported HTML file",
+		Short: "Import your bookmarks from a browser exported HTML file",
 		Args:  cobra.MinimumNArgs(1),
 		Run:   handleImport,
 	}
-	rootCmd.AddCommand(cmdAdd, cmdOpen, cmdDelete, cmdImport)
+
+	var cmdProfile = &cobra.Command{
+		Use:   "profile [name]",
+		Short: "Create or switch to a bookmark profile",
+		Args:  cobra.MinimumNArgs(1),
+		Run:   handleProfile,
+	}
+
+	cmdProfile.Flags().StringP("create", "c", "", "Create a new profile")
+	cmdProfile.Flags().StringP("switch", "s", "", "Switch to a profile")
+
+	rootCmd.AddCommand(cmdAdd, cmdOpen, cmdDelete, cmdImport, cmdProfile)
 
 	if err := rootCmd.Execute(); err != nil {
 		log_error(err, 2)

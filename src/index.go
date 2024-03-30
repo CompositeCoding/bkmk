@@ -56,8 +56,6 @@ func addDomain(domain string, alias string) error {
 		tempDomain = Domain{ID: uuid.New().String(), Value: domain}
 	}
 
-	fmt.Println(tempDomain)
-
 	err := index.Index(tempDomain.ID, tempDomain)
 	if err != nil {
 		return err
@@ -75,9 +73,13 @@ func deleteDomain(id string) error {
 }
 
 func init() {
-	index, err = bleve.Open("index.bleve")
+
+	config := ReadOrCreateConfig()
+	var profile string = fmt.Sprintf("%v.bleve", config.Profile)
+
+	index, err = bleve.Open(profile)
 	if err != nil {
-		index, err = bleve.New("index.bleve", bleve.NewIndexMapping())
+		index, err = bleve.New(profile, bleve.NewIndexMapping())
 		if err != nil {
 			log_error(err, 2)
 		}

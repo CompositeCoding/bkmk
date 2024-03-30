@@ -1,3 +1,4 @@
 .vscode
-index.bleve
+*.bleve
 bkmk.exe
+config
