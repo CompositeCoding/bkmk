@@ -1,4 +1,4 @@
-package main
+package lib
 
 import (
 	"crypto/rand"
@@ -19,11 +19,11 @@ func ReadOrCreateConfig() Config {
 
 	config, err := os.OpenFile("./config", os.O_CREATE|os.O_RDWR, 0600)
 	if err != nil {
-		log_error(err, 2)
+		LogError(err, 2)
 	}
 	info, err := config.Stat()
 	if err != nil {
-		log_error(err, 2)
+		LogError(err, 2)
 	}
 
 	// Empty config file, creating one
@@ -33,7 +33,7 @@ func ReadOrCreateConfig() Config {
 
 		_, err := rand.Read(key)
 		if err != nil {
-			log_error(err, 2)
+			LogError(err, 2)
 		}
 
 		var encryptionKey string = b64.StdEncoding.EncodeToString(key)
@@ -45,13 +45,13 @@ func ReadOrCreateConfig() Config {
 
 		data, err := json.Marshal(configData)
 		if err != nil {
-			log_error(err, 2)
+			LogError(err, 2)
 		}
 
 		_, err = config.Write(data)
 
 		if err != nil {
-			log_error(err, 2)
+			LogError(err, 2)
 		}
 
 		return Config{

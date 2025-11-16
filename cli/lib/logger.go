@@ -1,8 +1,8 @@
-package main
+package lib
 
 import "fmt"
 
-func log_error(err error, severity int8) {
+func LogError(err error, severity int8) {
 	if severity == 0 {
 		fmt.Printf("INFO: %v", err)
 	}

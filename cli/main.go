@@ -8,6 +8,10 @@ import (
 	"regexp"
 	"runtime"
 
+	"bkmk/importer"
+	"bkmk/lib"
+	"bkmk/store"
+
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/spf13/cobra"
 )
@@ -24,45 +28,40 @@ func openBrowser(url string) {
 	case "windows":
 		cmd = exec.Command("rundll32", "url.dll", "FileProtocolHandler", url)
 	case "darwin":
-		cmd = exec.Command("open", url) // "open"
-	default: // "linux", "freebsd", "openbsd", "netbsd"
-		cmd = exec.Command("xdg-open", url) //  "xdg-open"
+		cmd = exec.Command("open", url)
+	default:
+		cmd = exec.Command("xdg-open", url)
 	}
 
-	err := cmd.Run()
-
-	if err != nil {
-		log_error(err, 1)
+	if err := cmd.Run(); err != nil {
+		lib.LogError(err, 1)
 	}
 }
 
 func handleOpen(cmd *cobra.Command, args []string) {
-
-	var domains []Domain
+	var domains []store.Domain
 	var err error
 
 	if len(args) == 0 {
-		domains, err = queryDomains("")
+		domains, err = store.QueryDomains("")
 	} else {
-		domains, err = queryDomains(args[0])
+		domains, err = store.QueryDomains(args[0])
 	}
 	if err != nil {
-		log_error(err, 1)
-	}
-
-	var suggestions []string
-
-	// Loop through the domains and append the Value of each to the values slice
-	for _, domain := range domains {
-		suggestions = append(suggestions, fmt.Sprintf("%v", domain.Value))
-	}
-
-	if len(suggestions) == 0 {
-		log_error(errors.New("cannot open an empty index, call `add` first"), 0)
+		lib.LogError(err, 1)
 		return
 	}
 
-	// The question to ask
+	var suggestions []string
+	for _, d := range domains {
+		suggestions = append(suggestions, fmt.Sprintf("%v", d.Value))
+	}
+
+	if len(suggestions) == 0 {
+		lib.LogError(errors.New("cannot open an empty index, call `add` first"), 0)
+		return
+	}
+
 	var qs = []*survey.Question{
 		{
 			Name: "item",
@@ -73,24 +72,19 @@ func handleOpen(cmd *cobra.Command, args []string) {
 		},
 	}
 
-	// The answer will be stored in this struct
 	answer := struct {
-		Item string `survey:"item"` // matches the question name
+		Item string `survey:"item"`
 	}{}
 
-	// Perform the survey
-	err = survey.Ask(qs, &answer)
-	if err != nil {
-		log_error(err, 1)
+	if err := survey.Ask(qs, &answer); err != nil {
+		lib.LogError(err, 1)
 		return
 	}
 
 	openBrowser(answer.Item)
-
 }
 
 func handleAdd(cmd *cobra.Command, args []string) {
-
 	if !isValidURL(args[0]) {
 		fmt.Printf("Error! Unable to add %v, bkmk only supports valid URLs", args[0])
 		return
@@ -98,33 +92,30 @@ func handleAdd(cmd *cobra.Command, args []string) {
 
 	aliasFlag, _ := cmd.Flags().GetString("alias")
 
-	err := addDomain(args[0], aliasFlag)
-	if err != nil {
-		log_error(err, 1)
+	if err := store.AddDomain(args[0], aliasFlag); err != nil {
+		lib.LogError(err, 1)
 	} else {
 		fmt.Printf("Successfully bookmarked %v!", args[0])
 	}
 }
 
 func handleDelete(cmd *cobra.Command, args []string) {
-
-	var domains []Domain
+	var domains []store.Domain
 	var err error
 
 	if len(args) == 0 {
-		domains, err = queryDomains("")
+		domains, err = store.QueryDomains("")
 	} else {
-		domains, err = queryDomains(args[0])
+		domains, err = store.QueryDomains(args[0])
 	}
 	if err != nil {
-		log_error(err, 1)
+		lib.LogError(err, 1)
+		return
 	}
 
 	var suggestions []string
-
-	// Loop through the domains and append the Value of each to the values slice
-	for _, domain := range domains {
-		suggestions = append(suggestions, domain.Value)
+	for _, d := range domains {
+		suggestions = append(suggestions, d.Value)
 	}
 
 	if len(suggestions) == 0 {
@@ -132,7 +123,6 @@ func handleDelete(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	// The question to ask
 	var qs = []*survey.Question{
 		{
 			Name: "item",
@@ -143,47 +133,47 @@ func handleDelete(cmd *cobra.Command, args []string) {
 		},
 	}
 
-	// The answer will be stored in this struct
 	answer := struct {
-		Item string `survey:"item"` // matches the question name
+		Item string `survey:"item"`
 	}{}
 
-	// Perform the survey
-	err = survey.Ask(qs, &answer)
-	if err != nil {
-		log_error(err, 1)
+	if err := survey.Ask(qs, &answer); err != nil {
+		lib.LogError(err, 1)
 		return
 	}
 
-	// resolve delete
 	var id string
-	for _, domain := range domains {
-		if domain.Value == answer.Item {
-			id = domain.ID
+	for _, d := range domains {
+		if d.Value == answer.Item {
+			id = d.ID
+			break
 		}
 	}
-	err = deleteDomain(id)
-	if err != nil {
-		log_error(err, 1)
+
+	if id == "" {
+		lib.LogError(errors.New("could not resolve selected bookmark id"), 1)
+		return
+	}
+
+	if err := store.DeleteDomain(id); err != nil {
+		lib.LogError(err, 1)
 	} else {
 		log.Printf("Successfully deleted %v", answer.Item)
-
 	}
 }
 
 func handleImport(cmd *cobra.Command, args []string) {
-	err := importer(args[0])
-	if err != nil {
+	if err := importer.Importer(args[0]); err != nil {
+		lib.LogError(err, 1)
 		return
 	}
 }
 
 func handleProfile(cmd *cobra.Command, args []string) {
-
+	// TODO: implement profiles
 }
 
 func main() {
-
 	var rootCmd = &cobra.Command{Use: "bkmk"}
 
 	var cmdAdd = &cobra.Command{
@@ -192,7 +182,6 @@ func main() {
 		Args:  cobra.MinimumNArgs(1),
 		Run:   handleAdd,
 	}
-
 	cmdAdd.Flags().StringP("alias", "a", "", "Set an Alias for the bookmark")
 
 	var cmdOpen = &cobra.Command{
@@ -222,13 +211,12 @@ func main() {
 		Args:  cobra.MinimumNArgs(1),
 		Run:   handleProfile,
 	}
-
 	cmdProfile.Flags().StringP("create", "c", "", "Create a new profile")
 	cmdProfile.Flags().StringP("switch", "s", "", "Switch to a profile")
 
 	rootCmd.AddCommand(cmdAdd, cmdOpen, cmdDelete, cmdImport, cmdProfile)
 
 	if err := rootCmd.Execute(); err != nil {
-		log_error(err, 2)
+		lib.LogError(err, 2)
 	}
 }

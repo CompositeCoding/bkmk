@@ -1,6 +1,7 @@
-package main
+package store
 
 import (
+	"bkmk/lib"
 	"fmt"
 
 	"github.com/blevesearch/bleve/v2"
@@ -16,7 +17,7 @@ type Domain struct {
 	Alias string
 }
 
-func queryDomains(query string) ([]Domain, error) {
+func QueryDomains(query string) ([]Domain, error) {
 
 	toQuery := bleve.NewWildcardQuery("*" + query + "*")
 	searchRequest := bleve.NewSearchRequest(toQuery)
@@ -46,7 +47,7 @@ func queryDomains(query string) ([]Domain, error) {
 	return returnArray, nil
 }
 
-func addDomain(domain string, alias string) error {
+func AddDomain(domain string, alias string) error {
 
 	var tempDomain Domain
 
@@ -64,7 +65,8 @@ func addDomain(domain string, alias string) error {
 	return nil
 }
 
-func deleteDomain(id string) error {
+func DeleteDomain(id string) error {
+
 	err = index.Delete(id)
 	if err != nil {
 		return err
@@ -74,14 +76,15 @@ func deleteDomain(id string) error {
 
 func init() {
 
-	config := ReadOrCreateConfig()
+	config := lib.ReadOrCreateConfig()
+
 	var profile string = fmt.Sprintf("%v.bleve", config.Profile)
 
 	index, err = bleve.Open(profile)
 	if err != nil {
 		index, err = bleve.New(profile, bleve.NewIndexMapping())
 		if err != nil {
-			log_error(err, 2)
+			lib.LogError(err, 2)
 		}
 	}
 }
